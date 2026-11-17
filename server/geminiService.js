@@ -77,42 +77,22 @@ export async function analyzeMessageWithGemini(messageText) {
   // Initialize the official Google Gen AI client with server-side key
   const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
 
-  // Use the recommended model, customizable via GEMINI_MODEL if needed
-  const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  // Primary supported model, customizable via GEMINI_MODEL
+  const primaryModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+  const candidateModels = [
+    primaryModel,
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+    'gemini-2.5-flash-lite'
+  ].filter((m, i, arr) => arr.indexOf(m) === i);
 
-  try {
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `Analyze this suspicious message:\n\n"""\n${messageText}\n"""` }]
-        }
-      ],
-      config: {
-        systemInstruction: SCAMLENS_SYSTEM_INSTRUCTION,
-        responseMimeType: 'application/json',
-        temperature: 0.2
-      }
-    });
+  let lastError = null;
 
-    const responseText = response.text;
-    if (!responseText) {
-      throw new Error('Gemini API returned an empty response.');
-    }
-
-    const parsedData = JSON.parse(responseText);
-
-    return {
-      ...parsedData,
-      sourceMode: 'gemini-live'
-    };
-  } catch (error) {
-    // If gemini-2.5-flash fails due to model availability on an older tier, attempt fallback to gemini-1.5-flash
-    if (error.message && (error.message.includes('not found') || error.message.includes('404')) && modelName !== 'gemini-1.5-flash') {
-      console.warn(`Model ${modelName} not found, falling back to gemini-1.5-flash...`);
-      const fallbackResponse = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+  for (const model of candidateModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
         contents: [
           {
             role: 'user',
@@ -126,14 +106,23 @@ export async function analyzeMessageWithGemini(messageText) {
         }
       });
 
-      const fallbackText = fallbackResponse.text;
-      const parsedData = JSON.parse(fallbackText);
+      const responseText = response.text;
+      if (!responseText) {
+        throw new Error('Gemini API returned an empty response.');
+      }
+
+      const parsedData = JSON.parse(responseText);
+
       return {
         ...parsedData,
-        sourceMode: 'gemini-live'
+        sourceMode: 'gemini-live',
+        activeModel: model
       };
+    } catch (error) {
+      lastError = error;
+      console.warn(`Model ${model} encounter: ${error.message || error}`);
     }
-
-    throw error;
   }
+
+  throw lastError || new Error('All Gemini model candidates failed to generate content.');
 }

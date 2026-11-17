@@ -23,7 +23,7 @@ function scamLensApiPlugin() {
             JSON.stringify({
               status: 'ok',
               configured: isConfigured,
-              model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+              model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
               message: isConfigured
                 ? 'Gemini API key is configured securely on the server.'
                 : 'GEMINI_API_KEY is not set in .env on the server.'
