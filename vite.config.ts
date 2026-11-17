@@ -78,6 +78,7 @@ function scamLensApiPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react(), scamLensApiPlugin()],
   server: {
     port: 5173,

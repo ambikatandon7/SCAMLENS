@@ -8,7 +8,7 @@ interface AudioNarrationButtonProps {
 
 export const AudioNarrationButton: React.FC<AudioNarrationButtonProps> = ({
   className = '',
-  audioSrc = '/audio/narration.mp3',
+  audioSrc = './audio/narration.mp3',
 }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -35,9 +35,9 @@ export const AudioNarrationButton: React.FC<AudioNarrationButtonProps> = ({
     };
 
     const handleError = () => {
-      // If /audio/narration.mp3 fails, attempt /audio/intro.mp3 fallback
+      // If narration.mp3 fails, attempt ./audio/intro.mp3 fallback
       if (audio.src.includes('narration.mp3')) {
-        audio.src = '/audio/intro.mp3';
+        audio.src = './audio/intro.mp3';
         audio.load();
       } else {
         setHasError(true);
