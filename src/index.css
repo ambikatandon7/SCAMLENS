@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #060913;
+    color: #e2e8f0;
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Custom glowing scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090e1a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 240, 255, 0.2);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #0284c7;
+  }
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+.glass-panel-burgundy {
+  background: rgba(30, 10, 20, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(225, 29, 72, 0.25);
+}
+
+.glass-card-interactive {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 240, 255, 0.4);
+  box-shadow: 0 10px 30px -10px rgba(0, 240, 255, 0.2);
+}
+
+/* Cyber grid background */
+.cyber-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Scanline animation */
+.scanline-overlay {
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    rgba(0, 0, 0, 0.25) 51%
+  );
+  background-size: 100% 4px;
+}
+
+/* Text glow effects */
+.text-glow-cyan {
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.6);
+}
+
+.text-glow-burgundy {
+  text-shadow: 0 0 16px rgba(225, 29, 72, 0.6);
+}
+
+/* Botpress Webchat SCAMLENS Dark Cyber Styling */
+#bp-web-widget-container,
+.bpw-layout,
+#bp-web-widget {
+  z-index: 99999 !important;
+}
+
+/* Subtle glowing cyan accent for the floating Botpress chat trigger */
+iframe[title="Botpress"],
+iframe[name="webchat-bubble"],
+iframe[name="webchat-frame"] {
+  filter: drop-shadow(0 0 16px rgba(0, 240, 255, 0.45));
+  transition: filter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+iframe[title="Botpress"]:hover,
+iframe[name="webchat-bubble"]:hover {
+  filter: drop-shadow(0 0 25px rgba(0, 240, 255, 0.8));
+}
