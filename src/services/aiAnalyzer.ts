@@ -19,11 +19,33 @@ export interface BackendStatus {
 
 export const USER_KEY_STORAGE = 'scamlens_user_gemini_api_key';
 
-export function getStoredUserApiKey(): string {
+// Built-in default key for SCAMLENS cloud deployment (base64 encoded)
+const EMBEDDED_KEY_B64 = 'QVEuQWI4Uk42SWhNdWtZaENBX1ZJWkJvZ1czc3haYUVpMVYyS01DcmV4Mm54RlpyNkR6dVE=';
+
+export function getBuiltinApiKey(): string {
   try {
-    return localStorage.getItem(USER_KEY_STORAGE) || '';
+    return atob(EMBEDDED_KEY_B64);
   } catch {
     return '';
+  }
+}
+
+export function getMaskedKey(key?: string): string {
+  if (!key || key.trim().length < 10) return '';
+  const clean = key.trim();
+  return `${clean.substring(0, 6)}...${clean.slice(-4)}`;
+}
+
+export function getStoredUserApiKey(): string {
+  try {
+    const userKey = localStorage.getItem(USER_KEY_STORAGE);
+    if (userKey && userKey.trim().length > 10) {
+      return userKey.trim();
+    }
+    // Automatically use the built-in default project key on the main website
+    return getBuiltinApiKey();
+  } catch {
+    return getBuiltinApiKey();
   }
 }
 

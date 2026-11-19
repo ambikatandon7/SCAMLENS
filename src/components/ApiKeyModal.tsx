@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { GlassCard } from './common/GlassCard';
-import { testGeminiApiKey } from '../services/aiAnalyzer';
+import { testGeminiApiKey, getMaskedKey } from '../services/aiAnalyzer';
 import { 
   X, 
   Key, 
@@ -173,11 +173,19 @@ export const ApiKeyModal: React.FC = () => {
 
           {/* SECTION 1: Connect API Key Directly to Website */}
           <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-3 mb-5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="gemini-key-input" className="text-xs font-mono uppercase text-cyan-300 font-bold tracking-wider flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5" />
-                Connect API Key To Website
-              </label>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <label htmlFor="gemini-key-input" className="text-xs font-mono uppercase text-cyan-300 font-bold tracking-wider flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5" />
+                  Website Gemini API Key
+                </label>
+                {isDirectConfigured && (
+                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Active ({getMaskedKey(userApiKey)})
+                  </span>
+                )}
+              </div>
               <a
                 href="https://aistudio.google.com/app/apikey"
                 target="_blank"
