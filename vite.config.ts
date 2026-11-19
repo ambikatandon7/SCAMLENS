@@ -11,6 +11,11 @@ function scamLensApiPlugin() {
     name: 'scamlens-api-endpoint',
     configureServer(server: any) {
       server.middlewares.use(async (req: any, res: any, next: any) => {
+        // Reload environment variables from .env on every API request
+        try {
+          dotenv.config({ override: true });
+        } catch {}
+
         // GET /api/status - check server-side Gemini configuration
         if (req.url === '/api/status' && req.method === 'GET') {
           const key = process.env.GEMINI_API_KEY;
@@ -18,12 +23,17 @@ function scamLensApiPlugin() {
             key && key.trim().length > 10 && key !== 'your_gemini_api_key_here'
           );
 
+          const maskedKey = isConfigured && key
+            ? `${key.trim().substring(0, 6)}...${key.trim().slice(-4)}`
+            : undefined;
+
           res.setHeader('Content-Type', 'application/json');
           res.end(
             JSON.stringify({
               status: 'ok',
               configured: isConfigured,
               model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
+              maskedKey,
               message: isConfigured
                 ? 'Gemini API key is configured securely on the server.'
                 : 'GEMINI_API_KEY is not set in .env on the server.'

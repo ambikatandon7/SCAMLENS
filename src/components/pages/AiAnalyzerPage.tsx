@@ -29,7 +29,9 @@ export const AiAnalyzerPage: React.FC = () => {
     setShowApiKeyModal, 
     recordAnalyzerScan,
     serverStatus,
-    refreshServerStatus 
+    refreshServerStatus,
+    userApiKey,
+    isGeminiConnected
   } = useGame();
 
   const [inputText, setInputText] = useState('');
@@ -71,13 +73,13 @@ export const AiAnalyzerPage: React.FC = () => {
     setBackendNotice(null);
 
     setLoadingStep(
-      !isDemoModeOnly && isServerConfigured
-        ? 'Dispatching payload to secure backend -> Calling Google Gen AI Gemini...'
+      !isDemoModeOnly && isGeminiConnected
+        ? `Dispatching to Google Gemini AI (${serverStatus?.model || 'gemini-3.1-flash-lite'})...`
         : 'Running SCAMLENS local cybersecurity forensic engine...'
     );
 
     try {
-      const outcome = await analyzeMessage(inputText, isDemoModeOnly);
+      const outcome = await analyzeMessage(inputText, isDemoModeOnly, userApiKey);
 
       setResult(outcome.result);
       recordAnalyzerScan();
@@ -153,15 +155,19 @@ export const AiAnalyzerPage: React.FC = () => {
         {/* Engine Mode Badge & Config Button */}
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center gap-2.5 text-xs font-mono">
-            <div className={`w-2.5 h-2.5 rounded-full ${isServerConfigured && !isDemoModeOnly ? 'bg-cyan-400 shadow-[0_0_8px_#00f0ff]' : 'bg-emerald-400'}`} />
+            <div className={`w-2.5 h-2.5 rounded-full ${
+              isGeminiConnected && !isDemoModeOnly 
+                ? 'bg-cyan-400 shadow-[0_0_8px_#00f0ff]' 
+                : 'bg-emerald-400'
+            }`} />
             <div>
               <span className="text-slate-400 block text-[10px]">ACTIVE ENGINE:</span>
               <span className="text-white font-semibold">
                 {isDemoModeOnly
                   ? 'Forced Demo Mode (Local Heuristics)'
-                  : isServerConfigured
-                  ? 'Google Gemini AI (Secure Backend)'
-                  : 'Demo Mode (GEMINI_API_KEY pending)'}
+                  : isGeminiConnected
+                  ? `Google Gemini AI (${serverStatus?.model || 'gemini-3.1-flash-lite'})`
+                  : 'Demo Mode (Gemini key pending)'}
               </span>
             </div>
           </div>
@@ -171,17 +177,30 @@ export const AiAnalyzerPage: React.FC = () => {
               refreshServerStatus();
               setShowApiKeyModal(true);
             }}
-            className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition"
-            title="Configure AI Studio Engine"
+            className={`px-3.5 py-2.5 rounded-xl border text-xs font-mono flex items-center gap-1.5 transition ${
+              isGeminiConnected && !isDemoModeOnly
+                ? 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-cyan-400 hover:text-cyan-300'
+                : 'bg-cyan-500/20 hover:bg-cyan-500/30 border-cyan-400/50 text-cyan-300 shadow-[0_0_15px_rgba(0,240,255,0.25)]'
+            }`}
+            title="Configure Gemini AI Connection"
           >
-            <Server className="w-4 h-4" />
-            <span className="hidden sm:inline">Backend Settings</span>
+            {isGeminiConnected && !isDemoModeOnly ? (
+              <>
+                <Server className="w-4 h-4" />
+                <span className="hidden sm:inline">Gemini Connected</span>
+              </>
+            ) : (
+              <>
+                <Key className="w-4 h-4 text-cyan-400 animate-pulse" />
+                <span>Connect Gemini AI</span>
+              </>
+            )}
           </button>
         </div>
       </div>
 
       {/* Backend Status Notice if key not configured */}
-      {!isServerConfigured && !isDemoModeOnly && (
+      {!isGeminiConnected && !isDemoModeOnly && (
         <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-cyan-300 flex items-start justify-between gap-3 animate-fadeIn">
           <div className="flex items-start gap-2.5">
             <Info className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
@@ -190,15 +209,15 @@ export const AiAnalyzerPage: React.FC = () => {
                 Ready for Gemini Integration:
               </strong>
               <span>
-                To connect live Gemini intelligence, add your Google AI Studio key to <code className="px-1.5 py-0.5 rounded bg-black/50 text-cyan-200 font-mono">GEMINI_API_KEY</code> in the project's <code className="text-white font-mono">.env</code> file. The app is currently running in <strong>Demo Mode</strong> with built-in heuristic detection.
+                To activate real-time Gemini threat analysis, connect your Google AI Studio API key. You can paste it into your <code className="px-1.5 py-0.5 rounded bg-black/50 text-cyan-200 font-mono">.env</code> file or directly in the website settings. The app is currently running in <strong>Demo Mode</strong> with built-in heuristic detection.
               </span>
             </div>
           </div>
           <button
             onClick={() => setShowApiKeyModal(true)}
-            className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 font-mono text-[11px] whitespace-nowrap transition"
+            className="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-semibold font-mono text-[11px] whitespace-nowrap shadow-[0_0_12px_rgba(0,240,255,0.3)] transition"
           >
-            How to Connect
+            Connect Key
           </button>
         </div>
       )}

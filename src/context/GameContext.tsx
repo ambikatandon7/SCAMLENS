@@ -8,7 +8,12 @@ import {
 import { BADGES, LEVEL_MILESTONES } from '../data/badges';
 import { cyberAudio } from '../utils/sound';
 import { triggerCyberCelebration } from '../utils/confetti';
-import { checkServerApiStatus, BackendStatus } from '../services/aiAnalyzer';
+import { 
+  checkServerApiStatus, 
+  BackendStatus, 
+  getStoredUserApiKey, 
+  setStoredUserApiKey 
+} from '../services/aiAnalyzer';
 
 interface GameContextType {
   currentPage: PageType;
@@ -30,6 +35,9 @@ interface GameContextType {
   dismissBadgeNotification: () => void;
   serverStatus: BackendStatus | null;
   refreshServerStatus: () => Promise<void>;
+  userApiKey: string;
+  updateUserApiKey: (key: string) => void;
+  isGeminiConnected: boolean;
 }
 
 const STORAGE_KEY = 'scamlens_user_progress_v1';
@@ -59,6 +67,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(() => cyberAudio.isEnabled());
   const [newBadgeUnlocked, setNewBadgeUnlocked] = useState<string | null>(null);
   const [serverStatus, setServerStatus] = useState<BackendStatus | null>(null);
+  const [userApiKey, setUserApiKey] = useState<string>(() => getStoredUserApiKey());
+
+  const updateUserApiKey = (key: string) => {
+    setUserApiKey(key);
+    setStoredUserApiKey(key);
+  };
+
+  const isGeminiConnected = Boolean(serverStatus?.configured || (userApiKey && userApiKey.trim().length > 10));
 
   const refreshServerStatus = async () => {
     try {
@@ -68,7 +84,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setServerStatus({
         status: 'offline',
         configured: false,
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite',
         message: 'Could not contact backend API.'
       });
     }
@@ -296,7 +312,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       newBadgeUnlocked,
       dismissBadgeNotification,
       serverStatus,
-      refreshServerStatus
+      refreshServerStatus,
+      userApiKey,
+      updateUserApiKey,
+      isGeminiConnected
     }}>
       {children}
     </GameContext.Provider>

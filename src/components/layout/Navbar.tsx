@@ -25,7 +25,8 @@ export const Navbar: React.FC = () => {
     isSoundEnabled,
     toggleSound,
     isDemoModeOnly,
-    serverStatus
+    serverStatus,
+    isGeminiConnected
   } = useGame();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -44,7 +45,7 @@ export const Navbar: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
-  const isGeminiActive = !isDemoModeOnly && Boolean(serverStatus?.configured);
+  const isGeminiActive = !isDemoModeOnly && isGeminiConnected;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-cyan-500/15 bg-[#060913]/85 backdrop-blur-xl">

@@ -14,6 +14,227 @@ export interface BackendStatus {
   configured: boolean;
   model: string;
   message: string;
+  maskedKey?: string;
+}
+
+export const USER_KEY_STORAGE = 'scamlens_user_gemini_api_key';
+
+export function getStoredUserApiKey(): string {
+  try {
+    return localStorage.getItem(USER_KEY_STORAGE) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setStoredUserApiKey(key: string): void {
+  try {
+    if (key && key.trim()) {
+      localStorage.setItem(USER_KEY_STORAGE, key.trim());
+    } else {
+      localStorage.removeItem(USER_KEY_STORAGE);
+    }
+  } catch (e) {
+    console.error('Failed to save API key to localStorage:', e);
+  }
+}
+
+export const SCAMLENS_SYSTEM_INSTRUCTION = `You are SCAMLENS AI, an expert cybersecurity digital detective and forensic investigator dedicated to helping students and everyday internet users identify scams, social engineering tricks, credential theft, and malicious communications.
+
+Analyze the user's provided message thoroughly. Look for:
+1. Artificial urgency, coercive psychological pressure, and threats of account termination.
+2. Deceptive domains, lookalike URLs, suspicious URL shorteners (bit.ly, tinyurl), or atypical TLDs (.xyz, .top, .online, .biz).
+3. Solicitation of sensitive credentials, passwords, 2FA/MFA codes, social security numbers, or banking PINs.
+4. Demands for unconventional or irreversible payment (crypto, gift cards, wire transfer, unverified peer-to-peer transfers).
+5. Unrealistic promises (free checks, unearned prizes, high-paying easy remote jobs with no experience, crypto multipliers).
+6. Generic or suspicious salutations, grammar quirks, and off-platform communication steering (asking to move to Telegram/WhatsApp).
+
+You must respond ONLY with a valid JSON object matching the following structure:
+{
+  "riskScore": number between 0 and 100,
+  "verdict": "Genuine / Safe" | "Suspicious" | "High-Risk Scam" | "Critical Threat",
+  "confidence": number between 75 and 99,
+  "executiveSummary": "2-3 concise sentences summarizing what the message is attempting to do and the primary threat level.",
+  "threatFactors": [
+    {
+      "name": "Urgency & Psychological Coercion",
+      "score": number between 0 and 100,
+      "level": "Safe" | "Low" | "Medium" | "High" | "Critical",
+      "detail": "Specific detail regarding urgency cues in this message."
+    },
+    {
+      "name": "Deceptive Links & Infrastructure",
+      "score": number between 0 and 100,
+      "level": "Safe" | "Low" | "Medium" | "High" | "Critical",
+      "detail": "Specific detail regarding links or domain flags in this message."
+    },
+    {
+      "name": "Credential & Financial Harvesting",
+      "score": number between 0 and 100,
+      "level": "Safe" | "Low" | "Medium" | "High" | "Critical",
+      "detail": "Specific detail regarding credential or monetary solicitation."
+    },
+    {
+      "name": "Social Engineering & Platform Manipulation",
+      "score": number between 0 and 100,
+      "level": "Safe" | "Low" | "Medium" | "High" | "Critical",
+      "detail": "Specific detail regarding social tactics or platform hopping."
+    }
+  ],
+  "detectedIndicators": [
+    {
+      "flag": "Name of warning sign (e.g. Artificial Urgency / Threat)",
+      "snippet": "Quoted phrase from message if applicable",
+      "explanation": "Why this warning sign indicates a scam.",
+      "severity": "info" | "warning" | "danger"
+    }
+  ],
+  "recommendations": [
+    "Specific safe next step 1 for the student",
+    "Specific safe next step 2 for the student",
+    "Specific safe next step 3 for the student"
+  ]
+}`;
+
+/**
+ * Tests a Gemini API key against Google AI Studio models.
+ */
+export async function testGeminiApiKey(
+  apiKey: string
+): Promise<{ success: boolean; model: string; message: string }> {
+  if (!apiKey || apiKey.trim().length < 10) {
+    return {
+      success: false,
+      model: '',
+      message: 'API key is too short or empty. Please enter a valid Gemini API key.'
+    };
+  }
+
+  const cleanKey = apiKey.trim();
+  const candidateModels = [
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+    'gemini-2.5-flash-lite'
+  ];
+
+  let lastError = 'Unable to connect to Google Gemini API.';
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Respond with OK' }] }]
+          })
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return {
+          success: true,
+          model,
+          message: `Connected successfully to Google Gemini (${model})!`
+        };
+      }
+
+      if (data.error) {
+        if (data.error.code === 404 || data.error.message?.includes('not found')) {
+          continue;
+        }
+        return {
+          success: false,
+          model,
+          message: data.error.message || 'Google API rejected the key.'
+        };
+      }
+    } catch (err: any) {
+      lastError = err.message || 'Network connection failed.';
+    }
+  }
+
+  return {
+    success: false,
+    model: '',
+    message: lastError
+  };
+}
+
+/**
+ * Analyzes a suspicious message directly using client-side Gemini REST API.
+ */
+export async function analyzeWithDirectGemini(
+  text: string,
+  apiKey: string
+): Promise<AIAnalysisResult> {
+  const cleanKey = apiKey.trim();
+  const candidateModels = [
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+    'gemini-2.5-flash-lite'
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const model of candidateModels) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: `Analyze this suspicious message:\n\n"""\n${text}\n"""` }]
+              }
+            ],
+            systemInstruction: {
+              parts: [{ text: SCAMLENS_SYSTEM_INSTRUCTION }]
+            },
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2
+            }
+          })
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        if (data.error?.code === 404 || data.error?.message?.includes('not found')) {
+          continue;
+        }
+        throw new Error(data.error?.message || `HTTP ${res.status}`);
+      }
+
+      const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!responseText) {
+        throw new Error('Gemini API returned an empty response.');
+      }
+
+      const parsed = JSON.parse(responseText);
+
+      return {
+        ...parsed,
+        sourceMode: 'gemini-live',
+        activeModel: model
+      };
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`Direct Gemini attempt on ${model} failed:`, err.message);
+    }
+  }
+
+  throw lastError || new Error('All Gemini model candidates failed to generate content.');
 }
 
 /**
@@ -26,7 +247,7 @@ export async function checkServerApiStatus(): Promise<BackendStatus> {
       return {
         status: 'error',
         configured: false,
-        model: 'unknown',
+        model: 'gemini-3.1-flash-lite',
         message: 'Backend server /api/status endpoint unreachable.'
       };
     }
@@ -35,23 +256,24 @@ export async function checkServerApiStatus(): Promise<BackendStatus> {
     return {
       status: 'offline',
       configured: false,
-      model: 'unknown',
-      message: 'Server offline or not responding.'
+      model: 'gemini-3.1-flash-lite',
+      message: 'Server offline or running static host.'
     };
   }
 }
 
 /**
  * Analyzes a suspicious message.
- * Attempts to use the secure backend Gemini endpoint (/api/analyze) first.
- * If demo mode is forced or if the backend is unavailable/unconfigured,
- * it falls back cleanly to the built-in local heuristic engine.
+ * Priority 1: Backend server endpoint (/api/analyze)
+ * Priority 2: Direct client-side Gemini call (if clientApiKey or stored key available)
+ * Priority 3: Built-in local heuristic forensic engine (Demo Mode)
  */
 export async function analyzeMessage(
   text: string,
-  forceDemoMode: boolean = false
+  forceDemoMode: boolean = false,
+  clientApiKeyOverride?: string
 ): Promise<{ result: AIAnalysisResult; usedBackend: boolean; warningMessage?: string }> {
-  // If user selected Demo Mode, run local intelligence directly
+  // If user forced Demo Mode, run local intelligence directly
   if (forceDemoMode) {
     await new Promise(resolve => setTimeout(resolve, 600));
     return {
@@ -60,7 +282,7 @@ export async function analyzeMessage(
     };
   }
 
-  // Attempt to call the secure backend endpoint
+  // 1. Try secure backend endpoint first
   try {
     const res = await fetch('/api/analyze', {
       method: 'POST',
@@ -76,35 +298,37 @@ export async function analyzeMessage(
       };
     }
 
-    // Backend returned an error (e.g. 503 key missing or 500 error)
     const errData = await res.json().catch(() => ({}));
-    const errorMessage = errData.error || `Server responded with status ${res.status}`;
-
-    console.warn('[SCAMLENS] Backend Gemini API unavailable, falling back to Demo Mode:', errorMessage);
-
-    // Run fallback local analysis
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const fallbackResult = runHeuristicAnalysis(text);
-
-    return {
-      result: fallbackResult,
-      usedBackend: false,
-      warningMessage: errData.isMissingKey
-        ? 'GEMINI_API_KEY not configured in .env. Switched automatically to Demo Mode.'
-        : `Gemini API notice: ${errorMessage}. Falling back to Demo Mode.`
-    };
-  } catch (networkError: any) {
-    console.warn('[SCAMLENS] Network error reaching /api/analyze, falling back to Demo Mode:', networkError);
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const fallbackResult = runHeuristicAnalysis(text);
-
-    return {
-      result: fallbackResult,
-      usedBackend: false,
-      warningMessage: 'Could not reach backend API endpoint. Switched automatically to Demo Mode.'
-    };
+    console.warn('[SCAMLENS] Backend returned non-200:', errData);
+  } catch (backendError) {
+    // Backend is offline or on static host (e.g. GitHub Pages)
   }
+
+  // 2. Fall back to direct Gemini client call if user provided an API key
+  const directKey = clientApiKeyOverride || getStoredUserApiKey();
+  if (directKey && directKey.trim().length > 10) {
+    try {
+      const directResult = await analyzeWithDirectGemini(text, directKey);
+      return {
+        result: directResult,
+        usedBackend: false
+      };
+    } catch (directError: any) {
+      console.warn('[SCAMLENS] Direct Gemini API failed, falling back to Demo Mode:', directError);
+    }
+  }
+
+  // 3. Fall back cleanly to the built-in heuristic engine
+  await new Promise(resolve => setTimeout(resolve, 500));
+  const fallbackResult = runHeuristicAnalysis(text);
+
+  return {
+    result: fallbackResult,
+    usedBackend: false,
+    warningMessage: directKey
+      ? 'Gemini API call encountered an error. Showing offline forensic analysis.'
+      : 'GEMINI_API_KEY pending. Showing offline forensic analysis.'
+  };
 }
 
 /**
